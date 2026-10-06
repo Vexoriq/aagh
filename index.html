@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#070a0f">
+<title>Robot Pult</title>
+<style>
+:root{--bg:#070a0f;--panel:rgba(16,22,32,.74);--line:rgba(255,255,255,.16);--txt:#e8eef6;--dim:#8a97a8;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--acc:#38bdf8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
+button,input{font:inherit;color:inherit}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:none}
+.glass{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px}
+#top{position:absolute;top:calc(10px + env(safe-area-inset-top));left:12px;right:12px;display:flex;gap:8px;z-index:5}
+#status{display:flex;align-items:center;gap:9px;padding:0 14px;height:42px;flex:1;min-width:0}
+#stxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--warn);color:var(--warn);box-shadow:0 0 10px currentColor}
+body.on #dot{background:var(--ok);color:var(--ok)}
+body.off #dot{background:var(--bad);color:var(--bad)}
+#rtt{margin-left:auto;color:var(--dim);font-size:13px;flex:none}
+.ib{width:42px;height:42px;display:grid;place-items:center;cursor:pointer;font-size:18px;padding:0}
+.ib:active,.btn:active{transform:scale(.96)}
+#card{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,400px);padding:22px;text-align:center}
+[hidden]{display:none!important}
+#card h2{margin:0 0 6px;font-size:20px}
+#card p{margin:6px 0;color:var(--dim)}
+.spin{width:30px;height:30px;margin:0 auto 12px;border:3px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite}
+body.on .spin,body.off .spin{display:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.row{display:flex;gap:8px;margin-top:12px}
+.row input{flex:1;min-width:0;height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.35);outline:none;user-select:text;-webkit-user-select:text}
+.row input:focus{border-color:var(--acc)}
+.btn{height:42px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.08);cursor:pointer;text-decoration:none;display:inline-grid;place-items:center}
+.btn.pri{background:var(--acc);color:#04202e;border-color:transparent;font-weight:600}
+#pad{position:absolute;z-index:3;left:calc(22px + env(safe-area-inset-left));bottom:calc(26px + env(safe-area-inset-bottom));width:clamp(140px,30vmin,200px);aspect-ratio:1;border-radius:50%;border:2px solid var(--line);background:radial-gradient(circle,rgba(56,189,248,.14),rgba(16,22,32,.55) 70%);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);touch-action:none}
+#pad::before,#pad::after{content:"";position:absolute;background:var(--line);left:50%;top:50%;transform:translate(-50%,-50%)}
+#pad::before{width:2px;height:62%}#pad::after{height:2px;width:62%}
+#knob{z-index:1;position:absolute;left:50%;top:50%;width:38%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#7dd3fc,#0ea5e9);box-shadow:0 4px 18px rgba(14,165,233,.5)}
+#side{position:absolute;z-index:3;right:calc(22px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));width:clamp(150px,34vmin,230px);padding:14px;display:flex;flex-direction:column;gap:12px}
+#side label{display:flex;justify-content:space-between;color:var(--dim);font-size:13px}
+#spd{width:100%;accent-color:var(--acc);touch-action:pan-x}
+#stop{height:50px;border-radius:12px;border:0;background:var(--bad);color:#2b0a0a;font-weight:700;letter-spacing:.06em;cursor:pointer}
+#keys{position:absolute;z-index:3;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%);display:none;padding:10px 14px;text-align:center}
+@media (hover:hover) and (pointer:fine){#keys{display:block}}
+#keys .g{display:grid;grid-template-columns:repeat(3,38px);gap:5px;justify-content:center}
+#keys .k{height:34px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;font-weight:600;font-size:13px;color:var(--dim)}
+#keys .k.on{background:var(--acc);color:#04202e;border-color:transparent}
+#keys small{display:block;margin-top:6px;color:var(--dim);font-size:12px}
+</style>
+</head>
+<body class="search">
+<img id="cam" alt="">
+
+<div id="top">
+  <div id="status" class="glass"><span id="dot"></span><span id="stxt">Ishga tushmoqda…</span><span id="rtt"></span></div>
+  <button id="bFind" class="ib glass" title="Qayta qidirish">⟳</button>
+  <button id="bCfg" class="ib glass" title="Sozlama">⚙</button>
+  <button id="bFs" class="ib glass" title="To‘liq ekran">⛶</button>
+</div>
+
+<div id="card" class="glass">
+  <div class="spin"></div>
+  <h2 id="ctitle">Robot qidirilmoqda…</h2>
+  <p id="cmsg">Robot va bu qurilma bitta WiFi’da bo‘lsa, o‘zi topiladi.</p>
+  <div class="row"><input id="ip" placeholder="IP (ixtiyoriy): 192.168.1.45" inputmode="decimal" autocomplete="off"><button id="bIp" class="btn pri">Ulash</button></div>
+  <div class="row" id="dlrow" hidden><a class="btn pri" style="flex:1" href="index.html" download="robot-pult.html">⬇ Ilovani yuklab olish</a></div>
+</div>
+
+<div id="pad"><div id="knob"></div></div>
+
+<div id="side" class="glass">
+  <label><span>Tezlik</span><b id="spdv">80%</b></label>
+  <input id="spd" type="range" min="20" max="100" step="5" value="80">
+  <button id="stop">TO‘XTA</button>
+</div>
+
+<div id="keys" class="glass">
+  <div class="g"><span></span><span class="k" id="kf">W</span><span></span><span class="k" id="kl">A</span><span class="k" id="kb">S</span><span class="k" id="kr">D</span></div>
+  <small>W A S D yoki ← ↑ ↓ →  ·  Probel = to‘xta</small>
+</div>
+
+<script>
+'use strict';
+const STREAM_PORT = 81;                       // proshivkadagi bilan bir xil
+const HOSTS = ['robot.local'];
+const PREFIXES = ['192.168.1','192.168.0','192.168.4','192.168.43','192.168.137','172.20.10','192.168.2','192.168.8','192.168.100','192.168.31','10.0.0','10.0.1'];
+
+const $ = id => document.getElementById(id);
+const cam = $('cam'), card = $('card');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }
+};
+
+let base = null, info = null, busy = false, force = false, attempt = 0, cfgOpen = false;
+let fails = 0, inflight = false, lastKey = '', lastAt = 0;
+const cmd = { l:0, r:0 };
+const inp = { kx:0, ky:0, jx:0, jy:0, speed:(+store.get('speed') || 80) / 100 };
+
+/* ---------- holat ---------- */
+function state(s, text, title){
+  document.body.className = s;
+  $('stxt').textContent = text;
+  if(title) $('ctitle').textContent = title;
+  $('cmsg').textContent = s === 'search' ? 'Robot va bu qurilma bitta WiFi’da bo‘lsa, o‘zi topiladi.'
+                        : s === 'off' ? 'Robot yoqilganini va shu WiFi’ga ulanganini tekshiring.' : 'Robot ulangan.';
+  card.hidden = (s === 'on' && !cfgOpen);
+}
+const norm = s => { s = s.trim(); if(!s) return ''; if(!/^https?:\/\//.test(s)) s = 'http://' + s; return s.replace(/\/+$/, ''); };
+const prefixOf = b => { const m = /^http:\/\/(\d+\.\d+\.\d+)\.\d+$/.exec(b || ''); return m && m[1]; };
+
+/* ---------- robotni topish ---------- */
+async function probe(b, ms){
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
+  try{
+    const r = await fetch(b + '/ping', { signal: ac.signal, cache: 'no-store' });
+    const j = await r.json();
+    return j && j.id === 'wifi-robot' ? j : null;
+  }catch(e){ return null } finally{ clearTimeout(t) }
+}
+
+async function scan(prefix){
+  let found = null, next = 1;
+  const worker = async () => {
+    while(!found && next <= 254){
+      const b = 'http://' + prefix + '.' + (next++);
+      const j = await probe(b, 700);
+      if(j && !found) found = { base: b, info: j };
+    }
+  };
+  await Promise.all(Array.from({ length: 48 }, worker));
+  return found;
+}
+
+async function discover(full){
+  if(busy) return false;
+  busy = true;
+  try{
+    const saved = store.get('base'), man = store.get('manual');
+    const quick = [...new Set([saved, man && norm(man), ...HOSTS.map(h => 'http://' + h)].filter(Boolean))];
+    if(location.protocol === 'http:') quick.unshift(location.origin);
+    state('search', 'Robot qidirilmoqda…', 'Robot qidirilmoqda…');
+    for(const b of quick){
+      const j = await probe(b, 1500);
+      if(j){ connect(b, j); return true; }
+    }
+    if(full){
+      const ps = [...new Set([saved && prefixOf(saved), ...PREFIXES].filter(Boolean))];
+      for(const p of ps){
+        state('search', 'Tarmoq skanerlanmoqda: ' + p + '.x', 'Robot qidirilmoqda…');
+        const h = await scan(p);
+        if(h){ connect(h.base, h.info); return true; }
+      }
+    }
+    state('off', 'Robot topilmadi', 'Robot topilmadi');
+    return false;
+  } finally { busy = false; }
+}
+
+async function autoFind(){
+  while(!base){
+    const ok = await discover(attempt % 8 === 0 || force);
+    force = false; attempt++;
+    if(ok) break;
+    await sleep(3000);
+  }
+}
+
+function connect(b, j){
+  base = b; info = j; fails = 0; attempt = 0;
+  store.set('base', b);
+  state('on', 'Robot: ' + new URL(b).hostname, 'Robot ulangan');
+  startStream();
+  keepAwake();
+}
+function startStream(){
+  if(!base) return;
+  const port = (info && info.stream) || STREAM_PORT;
+  cam.style.display = 'block';
+  cam.src = 'http://' + new URL(base).hostname + ':' + port + '/stream?t=' + Date.now();
+}
+cam.addEventListener('error', () => { if(base) setTimeout(startStream, 1500); });
+
+function goOffline(){
+  base = null; info = null;
+  cam.removeAttribute('src'); cam.style.display = 'none';
+  $('rtt').textContent = '';
+  state('off', 'Aloqa uzildi', 'Aloqa uzildi');
+  autoFind();
+}
+
+/* ---------- buyruq yuborish ---------- */
+async function tick(){
+  if(!base || inflight) return;
+  const idle = cmd.l === 0 && cmd.r === 0, key = cmd.l + ',' + cmd.r, now = performance.now();
+  if(idle && key === lastKey && now - lastAt < 1500) return;      // tinch holatda 1.5 s da bir marta
+  inflight = true; lastKey = key; lastAt = now;
+  const ac = new AbortController(), to = setTimeout(() => ac.abort(), 900);
+  try{
+    const r = await fetch(base + '/ctl?l=' + cmd.l + '&r=' + cmd.r, { signal: ac.signal, cache: 'no-store' });
+    if(!r.ok) throw new Error('http');
+    fails = 0;
+    $('rtt').textContent = Math.round(performance.now() - now) + ' ms';
+  }catch(e){
+    lastKey = '';                                                  // keyingi tickda qayta urinadi
+    if(++fails >= 4) goOffline();
+  }finally{ clearTimeout(to); inflight = false; }
+}
+setInterval(tick, 80);
+
+/* ---------- kirish: klaviatura + joystick ---------- */
+function recompute(){
+  const x = inp.jx || inp.kx, y = inp.jy || inp.ky;      // y:+oldinga, x:+o'ngga
+  let l = y + x, r = y - x;
+  const m = Math.max(1, Math.abs(l), Math.abs(r));
+  cmd.l = Math.round(l / m * inp.speed * 100);
+  cmd.r = Math.round(r / m * inp.speed * 100);
+}
+function stopAll(){
+  keys.clear(); inp.kx = inp.ky = inp.jx = inp.jy = 0;
+  knob.style.transform = 'translate(-50%,-50%)';
+  paintKeys(); recompute();
+}
+
+const MAP = { KeyW:'f', ArrowUp:'f', KeyS:'b', ArrowDown:'b', KeyA:'l', ArrowLeft:'l', KeyD:'r', ArrowRight:'r' };
+const keys = new Set();
+function paintKeys(){
+  for(const [id, k] of [['kf','f'],['kb','b'],['kl','l'],['kr','r']]) $(id).classList.toggle('on', keys.has(k));
+  inp.ky = (keys.has('f') ? 1 : 0) - (keys.has('b') ? 1 : 0);
+  inp.kx = (keys.has('r') ? 1 : 0) - (keys.has('l') ? 1 : 0);
+}
+addEventListener('keydown', e => {
+  if(e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+  if(e.code === 'Space'){ e.preventDefault(); stopAll(); return; }
+  const k = MAP[e.code]; if(!k) return;
+  e.preventDefault();
+  if(!keys.has(k)){ keys.add(k); paintKeys(); recompute(); }
+});
+addEventListener('keyup', e => {
+  const k = MAP[e.code]; if(!k) return;
+  keys.delete(k); paintKeys(); recompute();
+});
+addEventListener('blur', stopAll);
+document.addEventListener('visibilitychange', () => { if(document.hidden) stopAll(); else keepAwake(); });
+
+const pad = $('pad'), knob = $('knob');
+let pid = null;
+function padMove(e){
+  const r = pad.getBoundingClientRect(), R = r.width / 2, T = R - knob.offsetWidth / 2;
+  let dx = (e.clientX - (r.left + R)) / T, dy = (e.clientY - (r.top + R)) / T;
+  const d = Math.hypot(dx, dy); if(d > 1){ dx /= d; dy /= d; }
+  knob.style.transform = 'translate(calc(-50% + ' + dx * T + 'px), calc(-50% + ' + dy * T + 'px))';
+  const dead = Math.hypot(dx, dy) < 0.12;
+  inp.jx = dead ? 0 : dx; inp.jy = dead ? 0 : -dy;
+  recompute();
+}
+function padEnd(e){
+  if(e.pointerId !== pid) return;
+  pid = null; inp.jx = inp.jy = 0;
+  knob.style.transform = 'translate(-50%,-50%)'; recompute();
+}
+pad.addEventListener('pointerdown', e => { pid = e.pointerId; pad.setPointerCapture(pid); padMove(e); });
+pad.addEventListener('pointermove', e => { if(e.pointerId === pid) padMove(e); });
+pad.addEventListener('pointerup', padEnd);
+pad.addEventListener('pointercancel', padEnd);
+pad.addEventListener('lostpointercapture', padEnd);
+
+const spd = $('spd');
+spd.value = Math.round(inp.speed * 100); $('spdv').textContent = spd.value + '%';
+spd.addEventListener('input', () => {
+  inp.speed = spd.value / 100; $('spdv').textContent = spd.value + '%';
+  store.set('speed', spd.value); recompute();
+});
+$('stop').addEventListener('click', stopAll);
+
+/* ---------- tugmalar ---------- */
+$('bFind').addEventListener('click', () => { force = true; if(base) goOffline(); else if(!busy) autoFind(); });
+$('bCfg').addEventListener('click', () => { cfgOpen = !cfgOpen; card.hidden = (document.body.className === 'on' && !cfgOpen); });
+$('bFs').addEventListener('click', () => {
+  if(document.fullscreenElement) document.exitFullscreen();
+  else if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+});
+$('ip').value = store.get('manual') || '';
+$('bIp').addEventListener('click', async () => {
+  const v = norm($('ip').value); store.set('manual', v);
+  cfgOpen = false; force = true;
+  if(base) goOffline(); else if(!busy) autoFind();
+});
+async function keepAwake(){ try{ if(navigator.wakeLock) await navigator.wakeLock.request('screen'); }catch(e){} }
+
+/* ---------- start ---------- */
+if(location.protocol === 'https:'){
+  // Onlayn (https) sahifa brauzer qoidasiga ko'ra oddiy http robotga ulana olmaydi
+  state('off', 'Onlayn sahifada ishlamaydi', 'Ilovani yuklab oling');
+  $('cmsg').textContent = 'Brauzer onlayn (https) sahifaga robotga ulanishni taqiqlaydi. Faylni yuklab olib, qurilmangizda oching.';
+  $('dlrow').hidden = false;
+  document.querySelector('#card .row').hidden = true;
+}else{
+  autoFind();
+}
+</script>
+</body>
+</html>
